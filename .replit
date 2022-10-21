@@ -2,7 +2,7 @@
 run = ["php", "index.php"]
 
 # The default file opened in the editor.
-entrypoint = "index.php
+entrypoint = "index.php"
 
 [packager]
 language = "php"
