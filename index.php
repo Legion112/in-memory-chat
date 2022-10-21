@@ -66,10 +66,12 @@ class User {
 class GroupChat {
     /** @var array<string, User> */
     private array $members;
+    public string $name;
 
-    public function __construct(array $members)
+    public function __construct(string $name, array $members)
     {
         $this->members = $members;
+        $this->name = $name;
     }
     public function addMember(User $user):void
     {
@@ -143,16 +145,26 @@ class GroupMessageRepository {
     {
         $this->messages[spl_object_id($message)] = $message;
     }
+
+    /**
+     * @return array<array-key, GroupMessage>
+     */
+    public function getAllForGroupChat(GroupChat $groupChat):array
+    {
+        return array_filter($this->messages, static fn(GroupMessage $message) => $message->chat === $groupChat);
+    }
 }
 
 
 //
 class Messenger {
     private PrivateMessageRepository $privateMessages;
+    private GroupMessageRepository $groupMessages;
 
-    public function __construct(PrivateMessageRepository $messageRepository)
+    public function __construct(PrivateMessageRepository $messageRepository, GroupMessageRepository $groupMessageRepository)
     {
         $this->privateMessages = $messageRepository;
+        $this->groupMessages = $groupMessageRepository;
     }
 
     public function sendMessageToPrivetChat(PrivateMessage $message):void
@@ -171,14 +183,23 @@ class Messenger {
 
     public function sendGroupMessage(GroupMessage $groupMessage):void
     {
+        $this->groupMessages->persistMessage($groupMessage);
+    }
 
+    /**
+     * @return array<GroupMessage>
+     */
+    public function getAllMessagesInGroup(GroupChat $groupChat): array
+    {
+        return $this->groupMessages->getAllForGroupChat($groupChat);
     }
 
 }
 
 // Example
 $messageRepository = new PrivateMessageRepository([]);
-$messenger = new Messenger(new PrivateMessageRepository([]));
+$groupMessageRepository = new GroupMessageRepository([]);
+$messenger = new Messenger(new PrivateMessageRepository([]), $groupMessageRepository);
 $printer = new ContentPrinter();
 
 $max = new User('Max');
@@ -204,10 +225,24 @@ $alex = new User('Alex');
 $viktor = new User('Victor');
 $karl = new User('Karl');
 
-$groupChat = new GroupChat([$alex, $viktor, $karl]);
+$groupChat = new GroupChat('Old friends', [$alex, $viktor, $karl]);
 
 $kate = new User('Kate');
 $groupChat->addMember($kate);
 
-$groupMessage = new GroupMessage($alex, $groupChat, new TextContent('Hello everyone'));
-$messenger->sendGroupMessage($groupMessage);
+$messenger->sendGroupMessage( new GroupMessage($alex, $groupChat, new TextContent('Hello everyone')));
+$messenger->sendGroupMessage( new GroupMessage($kate, $groupChat, new TextContent('Hi, Karl! 😊')));
+$messenger->sendGroupMessage( new GroupMessage($viktor, $groupChat, new TextContent('How are you, Kate?')));
+
+
+printf("Chat '%s':\n", $groupChat->name);
+printf(
+    "Members:\t '%s'\n",
+    implode(
+        ', ',
+        array_map(static fn(User $user):string => $user->name, $groupChat->getMembers())
+    )
+);
+foreach ($messenger->getAllMessagesInGroup($groupChat) as $message) {
+    printf("%s:\t%s\n", $message->sender->name, $printer->print($message->content));
+}
