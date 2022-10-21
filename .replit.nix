@@ -1,1 +1,5 @@
-run = "php index.php"
+{ pkgs }: {
+	deps = [
+		pkgs.php74
+	];
+}
