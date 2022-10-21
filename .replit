@@ -1,1 +1,8 @@
-run = "php index.php"
+# The command that is executed when the run button is clicked.
+run = ["php", "index.php"]
+
+# The default file opened in the editor.
+entrypoint = "index.php
+
+[packager]
+language = "php"
